@@ -53,6 +53,7 @@ threadpoolctl==3.5.0
 tidytcells==2.1.5
 torch==2.5.1
 tornado==6.4.2
+tqdm==4.67.1
 traitlets==5.14.3
 triton==3.1.0
 typing_extensions==4.12.2
