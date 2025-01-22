@@ -1,1 +1,1 @@
-"Functions generating a amino acid alphabet"
+"Functions generating an amino acid alphabet"
