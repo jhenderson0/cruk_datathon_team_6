@@ -1,5 +1,6 @@
 import itertools
 
+import numpy.typing as npt
 import pandas as pd
 import torch
 
@@ -23,6 +24,12 @@ def compute_epitope_priors(epi_length: int, num_ones_in_alphabet: int) -> dict:
     return {epitope: compute_prob(epitope) for epitope in possible_epitopes}
 
 
+def get_crd3(path: str) -> npt.NDArray:
+    df = pd.read_csv(path, compression="gzip", header=0, sep="\t")
+    cdr3 = df["junction_aa"].dropna().unique()
+    return cdr3
+
+
 if __name__ == "__main__":
     model = Dumpy(5, 10)
     model.load_state_dict(
@@ -32,6 +39,8 @@ if __name__ == "__main__":
     num_ones_in_alphabet = int(alphabet.loc["Letter"].sum())
     epitope_priors = compute_epitope_priors(5, num_ones_in_alphabet)
     joint_model = DumpyJoint(model, epitope_priors)
+
+    print(get_crd3("./ignore/dcr_LTX_0001_N_beta.tsv.gz"))
 
     all_possible_tcrs = torch.stack(
         [
@@ -49,4 +58,4 @@ if __name__ == "__main__":
     mini_tcr = all_possible_tcrs[:5]
     mini_epitope = all_possible_epitopes[:5]
 
-    print(joint_model.joint(mini_tcr, mini_epitope))
+    predict = joint_model.joint(mini_tcr, mini_epitope)
