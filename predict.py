@@ -24,7 +24,7 @@ def compute_epitope_priors(epi_length: int, num_ones_in_alphabet: int) -> dict:
     return {epitope: compute_prob(epitope) for epitope in possible_epitopes}
 
 
-def get_crd3(path: str) -> npt.NDArray:
+def get_crd3(path: str, alphabet: pd.DataFrame) -> npt.NDArray:
     """
     Get cdr3 from Decombinator output, strip, and translate to binary.
     """
@@ -32,7 +32,9 @@ def get_crd3(path: str) -> npt.NDArray:
     cdr3s = df["junction_aa"].dropna().unique().tolist()
     fifteenmers = [cdr3 for cdr3 in cdr3s if len(cdr3) == 15]
     shortmers = [mer[4:14] for mer in fifteenmers]
-    print(shortmers)
+    translate_dict = {aa: binary["Letter"] for aa, binary in alphabet.to_dict().items()}
+    print(translate_dict)
+    # translation_table = str.maketrans(alphabet)
 
 
 if __name__ == "__main__":
@@ -45,7 +47,7 @@ if __name__ == "__main__":
     epitope_priors = compute_epitope_priors(5, num_ones_in_alphabet)
     joint_model = DumpyJoint(model, epitope_priors)
 
-    cdr3s = get_crd3("./ignore/dcr_LTX_0001_N_beta.tsv.gz")
+    cdr3s = get_crd3("./ignore/dcr_LTX_0001_N_beta.tsv.gz", alphabet)
 
     all_possible_tcrs = torch.stack(
         [
