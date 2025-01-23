@@ -6,6 +6,10 @@ import torch
 
 from src.dumpy import Dumpy, DumpyJoint
 
+PMHC_LEN = 5
+TCR_LEN = 10
+EPITOPE = "RLMAPVGSV"
+
 
 def compute_epitope_priors(epi_length: int, num_ones_in_alphabet: int) -> dict:
     """
@@ -24,6 +28,14 @@ def compute_epitope_priors(epi_length: int, num_ones_in_alphabet: int) -> dict:
     return {epitope: compute_prob(epitope) for epitope in possible_epitopes}
 
 
+def get_translate_table(alphabet: pd.DataFrame) -> dict[int, str]:
+    """
+    Returns a translation table based on alphabet provided
+    """
+    translate_dict = {aa: str(binary["Letter"]) for aa, binary in alphabet.to_dict().items()}
+    return str.maketrans(translate_dict)
+
+
 def get_tcrs(path: str, alphabet: pd.DataFrame) -> torch.Tensor:
     """
     Get cdr3 from Decombinator output, strip, and translate to binary.
@@ -32,19 +44,28 @@ def get_tcrs(path: str, alphabet: pd.DataFrame) -> torch.Tensor:
     cdr3s = df["junction_aa"].dropna().tolist()
     cdr3s = [cdr3 for cdr3 in cdr3s if len(cdr3) == 15]
     cdr3s = [mer[4:14] for mer in cdr3s]
-    translate_dict = {
-        aa: str(binary["Letter"]) for aa, binary in alphabet.to_dict().items()
-    }
-    translation_table = str.maketrans(translate_dict)
-    cdr3s = [mer.translate(translation_table) for mer in cdr3s]
+    table = get_translate_table(alphabet)
+    cdr3s = [mer.translate(table) for mer in cdr3s]
     cdr3s = [list(string) for string in cdr3s]
     cdr3s = [[float(i) for i in mer] for mer in cdr3s]
     cdr3s = torch.stack([torch.tensor(mer, dtype=torch.float32) for mer in cdr3s])
     return cdr3s
 
 
+def translate_epitope(seq: str, alphabet: pd.DataFrame) -> torch.Tensor:
+    """
+    Trim and translate epitope to binary
+    """
+    seq = seq[2:7]
+    table = get_translate_table(alphabet) 
+    seq = seq.translate(table)
+    split = list(seq)
+    floats = [float(i) for i in split]
+    return torch.tensor(floats, dtype=torch.float32)
+
+
 if __name__ == "__main__":
-    model = Dumpy(5, 10)
+    model = Dumpy(PMHC_LEN, TCR_LEN)
     model.load_state_dict(
         torch.load("model_saves/dumpy_of_choice.pth", weights_only=True)
     )
@@ -55,6 +76,8 @@ if __name__ == "__main__":
 
     tcrs = get_tcrs("./ignore/dcr_LTX_0001_N_beta.tsv.gz", alphabet)
 
+    interest_epitope = translate_epitope(EPITOPE, alphabet)
+
     all_possible_epitopes = torch.stack(
         [
             torch.tensor(epitope, dtype=torch.float32)
@@ -62,10 +85,7 @@ if __name__ == "__main__":
         ]
     )
 
-    mini_tcr = tcrs[:5]
-    mini_epitope = all_possible_epitopes[:5]
-
-    predict = joint_model.joint(mini_tcr, mini_epitope)
-    print(predict)
+    interest_predict = joint_model.joint(tcrs, interest_epitope.unsqueeze(0))
+    all_predict = joint_model.joint(tcrs, all_possible_epitopes)
 
     # Get vs all epitopes and normalise one of interest by whole row
