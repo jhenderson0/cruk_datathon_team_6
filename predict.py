@@ -25,9 +25,13 @@ def compute_epitope_priors(epi_length: int, num_ones_in_alphabet: int) -> dict:
 
 
 def get_crd3(path: str) -> npt.NDArray:
+    """
+    Get cdr3 from Decombinator output, strip, and translate to binary.
+    """
     df = pd.read_csv(path, compression="gzip", header=0, sep="\t")
-    cdr3 = df["junction_aa"].dropna().unique()
-    return cdr3
+    cdr3s = df["junction_aa"].dropna().unique().tolist()
+    fifteenmers = [cdr3 for cdr3 in cdr3s if len(cdr3) == 15]
+    print(fifteenmers)
 
 
 if __name__ == "__main__":
@@ -40,7 +44,7 @@ if __name__ == "__main__":
     epitope_priors = compute_epitope_priors(5, num_ones_in_alphabet)
     joint_model = DumpyJoint(model, epitope_priors)
 
-    print(get_crd3("./ignore/dcr_LTX_0001_N_beta.tsv.gz"))
+    cdr3s = get_crd3("./ignore/dcr_LTX_0001_N_beta.tsv.gz")
 
     all_possible_tcrs = torch.stack(
         [
@@ -59,3 +63,5 @@ if __name__ == "__main__":
     mini_epitope = all_possible_epitopes[:5]
 
     predict = joint_model.joint(mini_tcr, mini_epitope)
+
+    # Get vs all epitopes and normalise one of interest by whole row
