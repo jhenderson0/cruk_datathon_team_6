@@ -1,3 +1,5 @@
+import itertools
+from pandas import DataFrame
 import torch
 from torch import Tensor
 from torch.nn import Module, Linear
@@ -75,3 +77,20 @@ class DumpyJoint:
         epitopes_as_tuples = [tuple(epitope.to(int).tolist()) for epitope in epitopes]
         marginals = [self.epitope_priors[epitope] for epitope in epitopes_as_tuples]
         return torch.tensor(marginals)
+
+
+def compute_epitope_priors_from_alphabet(alphabet_df: DataFrame) -> dict:
+    """
+    Compute the prior probability of each epitope given the alphabet table.
+    Note that the zeroth colum of the alphabet CSV should be read in as the index column or this won't work.
+    """
+    num_ones_in_alphabet = int(alphabet_df.loc["Letter"].sum())
+    prob_one = num_ones_in_alphabet / 20
+    prob_zero = 1 - prob_one
+
+    possible_epitopes = [tuple(prod) for prod in itertools.product([0,1], repeat=5)]
+    
+    def compute_prob(epitope: tuple) -> float:
+        return prob_one ** epitope.count(1) * prob_zero ** epitope.count(0)
+    
+    return {epitope: compute_prob(epitope) for epitope in possible_epitopes}
