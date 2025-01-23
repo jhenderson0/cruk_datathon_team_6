@@ -24,12 +24,12 @@ def compute_epitope_priors(epi_length: int, num_ones_in_alphabet: int) -> dict:
     return {epitope: compute_prob(epitope) for epitope in possible_epitopes}
 
 
-def get_crd3(path: str, alphabet: pd.DataFrame) -> torch.Tensor:
+def get_tcrs(path: str, alphabet: pd.DataFrame) -> torch.Tensor:
     """
     Get cdr3 from Decombinator output, strip, and translate to binary.
     """
     df = pd.read_csv(path, compression="gzip", header=0, sep="\t")
-    cdr3s = df["junction_aa"].dropna().unique().tolist()
+    cdr3s = df["junction_aa"].dropna().tolist()
     cdr3s = [cdr3 for cdr3 in cdr3s if len(cdr3) == 15]
     cdr3s = [mer[4:14] for mer in cdr3s]
     translate_dict = {
@@ -53,8 +53,7 @@ if __name__ == "__main__":
     epitope_priors = compute_epitope_priors(5, num_ones_in_alphabet)
     joint_model = DumpyJoint(model, epitope_priors)
 
-    cdr3s = get_crd3("./ignore/dcr_LTX_0001_N_beta.tsv.gz", alphabet)
-    print(cdr3s)
+    tcrs = get_tcrs("./ignore/dcr_LTX_0001_N_beta.tsv.gz", alphabet)
 
     all_possible_epitopes = torch.stack(
         [
@@ -63,7 +62,7 @@ if __name__ == "__main__":
         ]
     )
 
-    mini_tcr = cdr3s[:5]
+    mini_tcr = tcrs[:5]
     mini_epitope = all_possible_epitopes[:5]
 
     predict = joint_model.joint(mini_tcr, mini_epitope)
