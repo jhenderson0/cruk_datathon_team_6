@@ -31,7 +31,8 @@ def get_crd3(path: str) -> npt.NDArray:
     df = pd.read_csv(path, compression="gzip", header=0, sep="\t")
     cdr3s = df["junction_aa"].dropna().unique().tolist()
     fifteenmers = [cdr3 for cdr3 in cdr3s if len(cdr3) == 15]
-    print(fifteenmers)
+    shortmers = [mer[4:14] for mer in fifteenmers]
+    print(shortmers)
 
 
 if __name__ == "__main__":
