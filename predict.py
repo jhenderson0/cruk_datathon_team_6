@@ -88,4 +88,6 @@ if __name__ == "__main__":
     interest_predict = joint_model.joint(tcrs, interest_epitope.unsqueeze(0))
     all_predict = joint_model.joint(tcrs, all_possible_epitopes)
 
-    # Get vs all epitopes and normalise one of interest by whole row
+    norm = interest_predict / torch.sum(all_predict)
+    torch.save(norm, "./ignore/interest_probability.pt")
+    torch.save(all_predict, "./ignore/all_probability.pt")
