@@ -1,3 +1,4 @@
+import argparse
 import itertools
 
 import numpy.typing as npt
@@ -32,7 +33,9 @@ def get_translate_table(alphabet: pd.DataFrame) -> dict[int, str]:
     """
     Returns a translation table based on alphabet provided
     """
-    translate_dict = {aa: str(binary["Letter"]) for aa, binary in alphabet.to_dict().items()}
+    translate_dict = {
+        aa: str(binary["Letter"]) for aa, binary in alphabet.to_dict().items()
+    }
     return str.maketrans(translate_dict)
 
 
@@ -57,14 +60,21 @@ def translate_epitope(seq: str, alphabet: pd.DataFrame) -> torch.Tensor:
     Trim and translate epitope to binary
     """
     seq = seq[2:7]
-    table = get_translate_table(alphabet) 
+    table = get_translate_table(alphabet)
     seq = seq.translate(table)
     split = list(seq)
     floats = [float(i) for i in split]
     return torch.tensor(floats, dtype=torch.float32)
 
 
+def get_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Dumpy prediction tool")
+    parser.add_argument("--in", action="store", dest="path")
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
+    args = get_args()
     model = Dumpy(PMHC_LEN, TCR_LEN)
     model.load_state_dict(
         torch.load("model_saves/dumpy_of_choice.pth", weights_only=True)
@@ -74,7 +84,7 @@ if __name__ == "__main__":
     epitope_priors = compute_epitope_priors(5, num_ones_in_alphabet)
     joint_model = DumpyJoint(model, epitope_priors)
 
-    tcrs = get_tcrs("./ignore/dcr_LTX_0001_N_beta.tsv.gz", alphabet)
+    tcrs = get_tcrs(args.path, alphabet)
 
     interest_epitope = translate_epitope(EPITOPE, alphabet)
 
@@ -89,5 +99,7 @@ if __name__ == "__main__":
     all_predict = joint_model.joint(tcrs, all_possible_epitopes)
 
     norm = interest_predict / torch.sum(all_predict)
-    torch.save(norm, "./ignore/interest_probability.pt")
-    torch.save(all_predict, "./ignore/all_probability.pt")
+
+    savename = args.path.split("/")[-1].split(".")[0]
+    torch.save(norm, f"./ignore/{savename}_interest_probability.pt")
+    torch.save(all_predict, f"./ignore/{savename}_all_probability.pt")
